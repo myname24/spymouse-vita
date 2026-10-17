@@ -1,0 +1,19 @@
+# game files and anything derived from them must never be committed
+data/
+*.apk
+*.obb
+*.so
+*.mp4
+*.m4a
+*.zip
+
+# build output and files generated from the user's libSpyMouse.so by build.sh
+build/
+src/gen/
+
+# local analysis notes that quote the game's own Java/ObjC symbols
+docs/dex_dump.txt
+docs/ANALYSIS.md
+docs/PORTING.md
+__pycache__/
+*.pyc
