@@ -15,6 +15,10 @@ Dead Space ...).
 - The intro and outro videos are skipped (they are MPEG-4 Part 2, which the Vita has no hardware decoder for).
 - No online features (EA's servers are long gone), ads and social buttons do nothing.
 
+## Screenshots<img width="960" height="544" alt="2026-10-17-165750" src="https://github.com/user-attachments/assets/769f4fc2-c8e4-4050-8cf2-63897799bf43" />
+<img width="960" height="544" alt="2026-10-17-165801" src="https://github.com/user-attachments/assets/34f55a4a-0bd4-4e22-b966-ed927ddd9b09" />
+
+
 ## What you need
 
 1. A hacked PS Vita / PSTV (HENkaku + Enso or similar).
