@@ -97,6 +97,28 @@ void sm_io_stats(unsigned *v)
     st_open = st_open_us = st_read_kb = st_read_us = st_neg = 0;
 }
 
+/* Incomplete data copies are the usual reason for a black screen that never ends. The game looks for each asset in
+ * files/res_960x640/ and then in files/res/; when both lookups fail the file is really missing, and the first 40 such files are
+ * logged (always, not only in verbose mode). */
+#define MISS_N 512
+static uint32_t miss_key[MISS_N]; static uint8_t miss_bits[MISS_N]; static int miss_n, miss_logged;
+static void note_miss(const char *p)
+{
+    const char *k; int bit;
+    if ((k = strstr(p, "/res_960x640/"))) { k += 13; bit = 1; }
+    else if ((k = strstr(p, "/res/"))) { k += 5; bit = 2; }
+    else return;
+    uint32_t h = hpath(k);
+    int i;
+    for (i = 0; i < miss_n && miss_key[i] != h; i++) ;
+    if (i == miss_n) { if (miss_n == MISS_N) return; miss_key[miss_n] = h; miss_bits[miss_n++] = 0; }
+    miss_bits[i] |= (uint8_t)bit;
+    if (miss_bits[i] == 3) {
+        miss_bits[i] |= 4;
+        if (miss_logged < 40) { miss_logged++; sm_log("MISSING game file: %s (not in res_960x640/ nor res/)\n", k); }
+    }
+}
+
 /* Read-only files up to MEMF_MAX are read into RAM with one open/fstat/read/close and served from memory through funopen(). The
  * game opens ~1000 small files per level and seeks to the end and back for each size, and every fseek on a real FILE discards the
  * buffer and goes back to the memory card (Vita test 22: 1.1-2.1 s of reads for 2-4 MB per level load). */
@@ -158,7 +180,7 @@ static FILE *w_fopen(const char *p, const char *m)
         if (f && m[0] == 'r') setvbuf(f, NULL, _IOFBF, 128 * 1024);     /* newlib's 1 KB default means one memory-card read per KB */
     }
     st_open++; st_open_us += (uint32_t)(sceKernelGetProcessTimeWide() - t0);
-    if (!f && rd) neg_add(p);
+    if (!f && rd) { note_miss(p); neg_add(p); }
     if (!sm_verbose) { /* quiet mode: no size probing or logging */ }
     else if (f && m[0] == 'r' && nflog < 1200) {         /* log the size too: .gui reads returned 0 bytes (Vita test 11) */
         long cur = ftell(f); fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, cur, SEEK_SET);
@@ -177,18 +199,18 @@ static volatile int nalog;
 static int w_android_log_print(int prio, const char *tag, const char *fmt, ...)
 {
     char b[400]; va_list a; va_start(a, fmt); vsnprintf(b, sizeof b, fmt, a); va_end(a);
-    if (nalog < 400) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", b); }
+    if (nalog < 400 && (prio >= 5 || sm_verbose)) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", b); }   /* warnings and errors always */
     return 0;
 }
 static int w_android_log_vprint(int prio, const char *tag, const char *fmt, va_list a)
 {
     char b[400]; vsnprintf(b, sizeof b, fmt, a);
-    if (nalog < 400) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", b); }
+    if (nalog < 400 && (prio >= 5 || sm_verbose)) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", b); }
     return 0;
 }
 static int w_android_log_write(int prio, const char *tag, const char *text)
 {
-    if (nalog < 400) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", text ? text : ""); }
+    if (nalog < 400 && (prio >= 5 || sm_verbose)) { nalog++; sm_log("[droid %d %s] %s\n", prio, tag ? tag : "", text ? text : ""); }
     return 0;
 }
 static int w_fclose(void *f) { int r = fclose(F(f)); TR("tr: fclose %p -> %d\n", f, r); return r; }

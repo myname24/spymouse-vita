@@ -34,7 +34,7 @@ void sm_log(const char *fmt, ...)
     char buf[512];
     va_list a; va_start(a, fmt); vsnprintf(buf, sizeof buf, fmt, a); va_end(a);
     if (!sm_verbose) {
-        static const char *const noisy[] = { "file:", "tr:", "gl:", "java:", "JNI:", "fread returned", "touch:", "[droid", "pthread_create",
+        static const char *const noisy[] = { "file:", "tr:", "gl:", "java:", "JNI:", "fread returned", "touch:", "pthread_create",
                                              "elf: hooked", "init ", "overlay:", NULL };
         for (int i = 0; noisy[i]; i++) if (!strncmp(buf, noisy[i], strlen(noisy[i]))) return;
     }
@@ -165,6 +165,11 @@ int main(void)
     {   /* the loader patches fixed addresses of one exact build: refuse anything else instead of crashing somewhere inside it */
         struct stat st;
         if (stat(SO_PATH, &st)) { sm_log("MISSING " SO_PATH " - copy libSpyMouse.so from the Android APK (lib/armeabi/); see README\n"); sceKernelDelayThread(3000000); return 1; }
+        static const char *const need[] = { DATA_DIR "/assets/GameApplication.ini", DATA_DIR "/files/res_960x640", DATA_DIR "/files/res" };
+        for (int i = 0; i < 3; i++) {
+            struct stat s2;
+            if (stat(need[i], &s2)) { sm_log("MISSING %s - the game data is incomplete; copy assets/ from the APK and files/ (res, res_960x640) from Android/data/com.ea.spymouse_row (see README)\n", need[i]); sceKernelDelayThread(3000000); return 1; }
+        }
         if (st.st_size != SO_SIZE) { sm_log("WRONG libSpyMouse.so: %ld bytes, expected %d (Spy Mouse HD 1.x armeabi from the EA APK)\n", (long)st.st_size, SO_SIZE); sceKernelDelayThread(3000000); return 1; }
     }
     if (elf_load(SO_PATH, sm_resolve)) { sm_log("load failed\n"); sceKernelDelayThread(3000000); return 1; }
